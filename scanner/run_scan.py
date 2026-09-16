@@ -8,6 +8,7 @@ from supabase import create_client
 from scanner.classifier_v431 import classify
 from scanner.cloud_store import CloudStore
 from scanner.ibay_v4 import discover_categories, extract_page
+from scanner.job_intelligence import job_fields_for_section
 
 
 def trigger_type():
@@ -68,6 +69,7 @@ def main():
                         classification,
                         run_id,
                         source_category=section["name"],
+                        job_fields=job_fields_for_section(section["name"], item),
                     )
                     counters[f"{result}_count"] += 1
                 store.mark_section_success(section["id"], len(items))

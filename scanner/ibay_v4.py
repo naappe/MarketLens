@@ -101,6 +101,7 @@ def extract_page_html(html, url, source_type):
             "url": absolute,
             "type": "wanted" if source_type == "wanted" else "for_sale",
             "price": price_from_text(context),
+            "summary": context[:2000],
         }
         old = found.get(lid)
         if old is None or len(item["title"]) > len(old["title"]):

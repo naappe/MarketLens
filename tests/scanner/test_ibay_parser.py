@@ -20,10 +20,20 @@ def test_extract_page_keeps_longest_title_and_wanted_intent():
     </body></html>
     '''
     items = extract_page_html(html, "https://ibay.com.mv/wanted-b1.html", "wanted")
-    assert items == [{
-        "listing_id": "42",
-        "title": "Apple Phone 128GB",
-        "url": "https://ibay.com.mv/phone-o42.html",
-        "type": "wanted",
-        "price": 1500.0,
-    }]
+    assert len(items) == 1
+    assert items[0]["listing_id"] == "42"
+    assert items[0]["title"] == "Apple Phone 128GB"
+    assert items[0]["url"] == "https://ibay.com.mv/phone-o42.html"
+    assert items[0]["type"] == "wanted"
+    assert items[0]["price"] == 1500.0
+
+
+def test_extract_page_keeps_listing_summary_context_for_job_analysis():
+    html = '''
+    <html><body>
+      <div>We are hiring a cashier. WhatsApp 7844422. <a href="/cashier-o99.html">Cashier</a></div>
+    </body></html>
+    '''
+    items = extract_page_html(html, "https://ibay.com.mv/jobs-b55_0.html", "category")
+    assert "We are hiring a cashier" in items[0]["summary"]
+    assert "7844422" in items[0]["summary"]

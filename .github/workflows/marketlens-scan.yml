@@ -1,0 +1,46 @@
+name: MarketLens Cloud Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_limit:
+        description: Number of iBay sections to scan
+        required: false
+        default: "10"
+  schedule:
+    - cron: "17 */4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: marketlens-cloud-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SCAN_LIMIT: ${{ github.event.inputs.scan_limit || '10' }}
+
+    steps:
+      - name: Check out MarketLens
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install scanner dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run scanner regression tests
+        run: python -m pytest tests/scanner -q
+
+      - name: Run MarketLens cloud scan
+        run: python -m scanner.run_scan

@@ -19,6 +19,12 @@ TRACKED_FIELDS = (
     "classification_reason",
     "source_category",
     "market_intent",
+    "job_direction",
+    "job_role",
+    "job_salary_min_mvr",
+    "job_salary_max_mvr",
+    "public_phone",
+    "public_email",
 )
 
 
@@ -147,14 +153,15 @@ class CloudStore:
         self._category_ids[name] = category_id
         return category_id
 
-    def upsert_listing(self, source_id, item, classification, scan_run_id, source_category):
+    def upsert_listing(self, source_id, item, classification, scan_run_id, source_category, job_fields=None):
         top, subcategory, intent, confidence, reason = classification
         category_id = self.ensure_category(top)
         lookup = (
             self.client.table("marketlens_listings")
             .select(
                 "id,title,price_mvr,category_id,status,url,listing_type,subcategory,"
-                "classification_confidence,classification_reason,source_category,market_intent"
+                "classification_confidence,classification_reason,source_category,market_intent,"
+                "job_direction,job_role,job_salary_min_mvr,job_salary_max_mvr,public_phone,public_email"
             )
             .eq("source_id", source_id)
             .eq("external_id", str(item["listing_id"]))
@@ -174,6 +181,13 @@ class CloudStore:
             "classification_reason": reason,
             "source_category": source_category,
             "market_intent": intent,
+            "job_direction": None,
+            "job_role": None,
+            "job_salary_min_mvr": None,
+            "job_salary_max_mvr": None,
+            "public_phone": None,
+            "public_email": None,
+            **(job_fields or {}),
         }
         ts = now_iso()
 

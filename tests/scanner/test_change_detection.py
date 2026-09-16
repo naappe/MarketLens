@@ -15,3 +15,10 @@ def test_category_or_price_change_is_tracked():
     new = dict(old, price_mvr=1300, category_id="b")
     changed, _ = tracked_changes(old, new)
     assert set(changed) >= {"price_mvr", "category_id"}
+
+
+def test_job_direction_change_is_tracked():
+    old = {"title":"Cashier","price_mvr":None,"category_id":"a","status":"active","url":"u","listing_type":"for_sale","subcategory":"Jobs","classification_confidence":88,"classification_reason":"source","source_category":"Jobs","market_intent":"For Sale","job_direction":"Other","job_role":"cashier","job_salary_min_mvr":None,"job_salary_max_mvr":None,"public_phone":None,"public_email":None}
+    new = dict(old, job_direction="Hiring")
+    changed, _ = tracked_changes(old, new)
+    assert "job_direction" in changed

@@ -12,7 +12,8 @@ SOURCES = {
     },
     "gazette": {
         "name": "Maldives Gazette",
-        "base_url": "https://gazette.gov.mv/",
+        "base_url": "https://gazette.gov.mv/iulaan",
+        "path_regex": r"^/iulaan/\\d+$",
         "kind": "official",
         "priority": 20,
         "enabled": True,
@@ -32,7 +33,8 @@ SOURCES = {
     },
     "jobcenter": {
         "name": "Job Center Maldives",
-        "base_url": "https://beta.jobcenter.mv/en",
+        "base_url": "https://beta.jobcenter.mv/en/jobs",
+        "path_regex": r"^/en/jobs/[^/?#]+$",
         "kind": "jobs",
         "priority": 30,
         "enabled": True,

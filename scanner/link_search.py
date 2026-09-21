@@ -1,4 +1,4 @@
-"""Generic public-link discovery and opportunity scoring for MarketLens."""
+"""Public opportunity-link discovery for MarketLens."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 from scanner.source_catalog import enabled_sources, get_source
 
 DEFAULT_TIMEOUT = 20
-USER_AGENT = "MarketLens/4.4 (+public opportunity discovery)"
+USER_AGENT = "Mozilla/5.0 (compatible; MarketLens/4.4; +https://github.com/naappe/MarketLens)"
 
 HIGH_VALUE = {
     "wanted": 30,
@@ -31,16 +31,21 @@ HIGH_VALUE = {
     "purchase": 18,
 }
 
-NOISE = {
-    "privacy": -40,
-    "terms": -40,
-    "login": -25,
-    "sign in": -25,
-    "register": -15,
-    "contact": -12,
-    "about": -10,
-    "facebook": -25,
-    "instagram": -25,
+NOISE_TITLES = {
+    "home",
+    "jobs",
+    "employers",
+    "education & training",
+    "income support",
+    "generate widget",
+    "view",
+    "read more",
+    "read more..",
+    "privacy",
+    "terms & conditions",
+    "contact us",
+    "login",
+    "register",
 }
 
 
@@ -69,36 +74,56 @@ def opportunity_score(title, url, signals=()):
     for phrase in signals:
         if phrase.lower() in haystack:
             score += 12
-    for phrase, weight in NOISE.items():
-        if phrase in haystack:
-            score += weight
     if re.search(r"/(?:iulaan|jobs?|vacanc|tender|procurement|wanted)", haystack):
         score += 20
-    return max(0, min(100, score))
+    return max(1, min(100, score))
+
+
+def _context(anchor):
+    best = ""
+    node = anchor.parent
+    for _ in range(5):
+        if node is None:
+            break
+        candidate = _clean(node.get_text(" ", strip=True))
+        if len(candidate) > len(best):
+            best = candidate
+        if len(best) >= 180:
+            break
+        node = node.parent
+    return best[:1600]
 
 
 def extract_links(html, source):
     soup = BeautifulSoup(html or "", "html.parser")
     seen = set()
     rows = []
+    path_regex = source.get("path_regex")
+
     for anchor in soup.find_all("a", href=True):
         title = _clean(anchor.get_text(" ", strip=True))
         url = canonical_url(source["base_url"], anchor.get("href"))
         if not url or not same_host(url, source["base_url"]) or url in seen:
             continue
-        seen.add(url)
-        score = opportunity_score(title, url, source.get("signals", ()))
-        if score <= 0:
+        if path_regex and not re.search(path_regex, urlparse(url).path):
             continue
+        if len(title) < 4 or title.lower() in NOISE_TITLES:
+            continue
+
+        seen.add(url)
+        context = _context(anchor)
+        score = opportunity_score(title, url, source.get("signals", ()))
         rows.append(
             {
                 "source_key": source["key"],
                 "source_name": source["name"],
-                "title": title or url,
+                "title": title,
                 "url": url,
                 "score": score,
+                "summary": context,
             }
         )
+
     return sorted(rows, key=lambda row: (-row["score"], row["title"].lower()))
 
 
@@ -110,7 +135,7 @@ def discover_source_links(source_key, *, timeout=DEFAULT_TIMEOUT, session=None):
     response = client.get(
         source["base_url"],
         timeout=timeout,
-        headers={"User-Agent": USER_AGENT},
+        headers={"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"},
     )
     response.raise_for_status()
     return extract_links(response.text, source)
@@ -123,9 +148,7 @@ def discover_all_links(*, timeout=DEFAULT_TIMEOUT, session=None):
         if source["discovery_mode"] != "links":
             continue
         try:
-            results.extend(
-                discover_source_links(source["key"], timeout=timeout, session=session)
-            )
+            results.extend(discover_source_links(source["key"], timeout=timeout, session=session))
         except Exception as exc:
             errors.append({"source": source["name"], "error": str(exc)})
     results.sort(key=lambda row: (-row["score"], row["source_name"], row["title"].lower()))
@@ -133,7 +156,7 @@ def discover_all_links(*, timeout=DEFAULT_TIMEOUT, session=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Discover high-value MarketLens opportunity links")
+    parser = argparse.ArgumentParser(description="Discover MarketLens opportunity links")
     parser.add_argument("--source", choices=[s["key"] for s in enabled_sources()] + ["all"], default="all")
     parser.add_argument("--limit", type=int, default=25)
     args = parser.parse_args()

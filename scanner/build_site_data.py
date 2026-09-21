@@ -149,7 +149,7 @@ def collect_links():
             kind = "Services"
         else:
             kind = "Opportunity"
-        timing = _timing_fields(title, "")
+        timing = _timing_fields(title, row.get("summary", ""))
         mapped.append(
             {
                 **row,
